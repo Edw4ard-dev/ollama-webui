@@ -1,0 +1,177 @@
+import pandas as pd
+
+# Load the dataset
+dataset_path = '/Users/minhnguyenbinh/Documents/Final Project Music Recommendations/dataset.csv'  # Update this with your actual dataset path
+
+# Try to load the dataset
+try:
+    df = pd.read_csv(dataset_path)
+    print("Dataset loaded successfully.")
+except FileNotFoundError:
+    print(f"File not found: {dataset_path}")
+    exit()
+except Exception as e:
+    print(f"An error occurred while loading the dataset: {e}")
+    exit()
+
+# Check available columns in the dataset
+print("Available columns in the dataset:")
+print(df.columns)
+
+# Clean column names (remove any extra spaces)
+df.columns = df.columns.str.strip()
+
+# List of required columns
+features = ["track_name", "artists", "danceability", "energy", "valence", "tempo", "acousticness", "popularity", "track_genre"]
+
+# Check for missing columns
+available_columns = df.columns.tolist()
+missing_columns = [col for col in features if col not in available_columns]
+
+if missing_columns:
+    print(f"Warning: Missing columns: {missing_columns}")
+    # Optionally, modify the list of features to only include available columns
+    features = [col for col in features if col in available_columns]
+else:
+    print("All required columns are present.")
+
+# Now proceed with filtering the data
+df_filtered = df[features].copy()
+
+# Fill missing values in numeric columns with the median
+numeric_columns = df_filtered.select_dtypes(include=['float64', 'int64']).columns
+df_filtered[numeric_columns] = df_filtered[numeric_columns].fillna(df_filtered[numeric_columns].median())
+
+# Fill missing values in categorical columns with the mode (most frequent value)
+categorical_columns = df_filtered.select_dtypes(include=['object']).columns
+df_filtered[categorical_columns] = df_filtered[categorical_columns].fillna(df_filtered[categorical_columns].mode().iloc[0])
+
+# Print the first few rows of the processed data to verify everything is correct
+print(df_filtered.head())
+
+
+
+import pandas as pd
+
+# Load the dataset (Replace with your actual file path)
+dataset_path = '/Users/minhnguyenbinh/Documents/Final Project Music Recommendations/dataset.csv'  # Make sure to replace with the correct path to your dataset
+df = pd.read_csv(dataset_path)
+
+# Display basic info about the dataset
+print("Dataset loaded successfully.")
+print("Available columns in the dataset:")
+print(df.columns)  # Display all column names
+
+# Check for missing values in the dataset
+missing_values = df.isnull().sum()
+print("\nMissing values in each column:")
+print(missing_values)
+
+# Fill missing values for numerical columns with the median of that column
+# For categorical columns like 'track_name', 'artists', we will fill with the mode (most frequent value)
+df['danceability'] = df['danceability'].fillna(df['danceability'].median())
+df['energy'] = df['energy'].fillna(df['energy'].median())
+df['valence'] = df['valence'].fillna(df['valence'].median())
+df['tempo'] = df['tempo'].fillna(df['tempo'].median())
+df['acousticness'] = df['acousticness'].fillna(df['acousticness'].median())
+df['track_genre'] = df['track_genre'].fillna(df['track_genre'].mode()[0])  # Replace with mode for categorical data
+
+# Verify that no missing values remain
+print("\nMissing values after filling:")
+print(df.isnull().sum())
+
+# Drop any unnecessary columns (e.g., 'Unnamed: 0')
+df.drop(columns=['Unnamed: 0'], inplace=True)
+
+# Verify the data types of the columns
+print("\nData types of each column:")
+print(df.dtypes)
+
+# Normalize numerical features using Min-Max scaling
+numerical_features = ['danceability', 'energy', 'valence', 'tempo', 'acousticness']
+
+# Apply Min-Max scaling: (X - min) / (max - min)
+df[numerical_features] = df[numerical_features].apply(lambda x: (x - x.min()) / (x.max() - x.min()))
+
+# Verify that normalization is applied
+print("\nNormalized Data (first 5 rows):")
+print(df[numerical_features].head())
+
+# Rule-based classification of mood based on features
+def classify_mood(row):
+    if row['valence'] > 0.6 and row['energy'] > 0.6:
+        return 'happy'
+    elif row['valence'] < 0.4 and row['energy'] < 0.4:
+        return 'sad'
+    elif row['energy'] > 0.7 and row['danceability'] > 0.6:
+        return 'energetic'
+    else:
+        return 'neutral'  # Optional category for songs that don't clearly fit into one mood
+
+# Apply the mood classification
+df['mood_label'] = df.apply(classify_mood, axis=1)
+
+# Show the first few rows with the mood labels
+print("\nSongs with Mood Labels:")
+print(df[['track_name', 'artists', 'mood_label']].head())
+
+# Function to filter songs based on mood
+def filter_by_mood(df, mood):
+    # Define mood-specific filters (adjust range of features based on mood)
+    mood_map = {
+        'happy': {'valence': (0.6, 1.0), 'energy': (0.6, 1.0)},
+        'sad': {'valence': (0.0, 0.4), 'energy': (0.0, 0.5)},
+        'energetic': {'tempo': (0.7, 1.0), 'energy': (0.7, 1.0)},
+    }
+    filters = mood_map[mood]
+    
+    # Filter the dataset based on the mood's feature ranges
+    filtered_df = df[
+        (df['valence'] >= filters['valence'][0]) & (df['valence'] <= filters['valence'][1]) &
+        (df['energy'] >= filters['energy'][0]) & (df['energy'] <= filters['energy'][1])
+    ]
+    
+    # Return a sample of 10 recommended songs
+    return filtered_df.sample(10) if not filtered_df.empty else None
+
+# Example: Get recommendations for 'happy' mood
+user_mood = 'happy'  # This would be based on user input in a real application
+recommendations = filter_by_mood(df, user_mood)
+
+# Display the recommendations
+if recommendations is not None:
+    print(f"\nTop 10 recommendations for {user_mood} mood:")
+    print(recommendations[['track_name', 'artists', 'track_genre']])
+else:
+    print(f"\nSorry, no songs found for mood: {user_mood}.")
+
+import matplotlib.pyplot as plt
+
+# Visualizing the distribution of moods
+mood_counts = df['mood_label'].value_counts()
+
+# Pie chart for mood distribution
+plt.figure(figsize=(6, 6))
+mood_counts.plot(kind='pie', autopct='%1.1f%%', colors=['#FFDDC1', '#FFABAB', '#FF6F61'], startangle=90)
+plt.title('Mood Distribution of Songs')
+plt.ylabel('')  # Remove the ylabel to make it cleaner
+plt.show()
+
+# Scatter plot to show songs' danceability and energy, with color based on mood
+plt.figure(figsize=(10, 6))
+
+# Map moods to colors
+mood_colors = {'happy': '#FFDDC1', 'sad': '#FFABAB', 'energetic': '#FF6F61'}
+
+# Plot each mood with its respective color
+for mood in ['happy', 'sad', 'energetic']:
+    mood_data = df[df['mood_label'] == mood]
+    plt.scatter(mood_data['danceability'], mood_data['energy'], 
+                label=mood, color=mood_colors[mood], alpha=0.7, edgecolors='w', s=100)
+
+plt.title('Scatter Plot: Danceability vs. Energy by Mood')
+plt.xlabel('Danceability')
+plt.ylabel('Energy')
+plt.legend(title='Mood', loc='upper left')
+plt.grid(True)
+plt.show()
